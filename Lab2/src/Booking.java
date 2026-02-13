@@ -1,9 +1,13 @@
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+
 public class Booking{
     private LocalDate startDate;
     private int numOfNights;
     private double costPerNight;
 
-    public Booking(LocalDate data, int numOfNights, double costPerNight){
+    public Booking(LocalDate date, int numOfNights, double costPerNight){
         this.startDate = date;
         this.numOfNights = numOfNights;
         this.costPerNight = costPerNight;
