@@ -1,0 +1,21 @@
+Project Notes - Q1 2026
+========================
+
+Meeting: Sprint Planning — March 2, 2026
+-----------------------------------------
+Attendees: Alice, Frank, Grace, Henry
+
+Action Items:
+  - Alice: Finalize API schema by March 6
+  - Frank: Set up staging environment
+  - Grace: Prepare budget forecast for Q2
+  - Henry: Follow up with 3 leads from last week's conference
+
+Blockers:
+  - Waiting on vendor approval for the new data pipeline license
+  - CI/CD pipeline intermittently failing on Node 20 builds
+
+Notes:
+  - Team agreed to move daily standups to 9:30 AM
+  - Retrospective scheduled for March 28 at 3:00 PM
+  - New onboarding doc to be completed before next hire starts

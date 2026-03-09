@@ -1,0 +1,11 @@
+Server Access Log - webserver-01
+=================================
+[2026-03-01 08:12:43] INFO  GET /api/users 200 OK (45ms) 192.168.1.10
+[2026-03-01 08:13:01] INFO  POST /api/login 200 OK (120ms) 10.0.0.55
+[2026-03-01 08:14:22] WARN  GET /api/orders 429 Too Many Requests (8ms) 203.0.113.42
+[2026-03-01 08:15:09] INFO  GET /api/products 200 OK (33ms) 192.168.1.18
+[2026-03-01 08:16:55] ERROR GET /api/reports 500 Internal Server Error (2ms) 192.168.1.22
+[2026-03-01 08:17:30] INFO  DELETE /api/sessions/99 204 No Content (19ms) 10.0.0.55
+[2026-03-01 08:18:47] INFO  PUT /api/users/42 200 OK (67ms) 192.168.1.10
+[2026-03-01 08:19:12] WARN  POST /api/upload 413 Payload Too Large (5ms) 198.51.100.7
+[2026-03-01 08:20:00] INFO  GET /healthcheck 200 OK (2ms) 127.0.0.1

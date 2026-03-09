@@ -1,0 +1,12 @@
+Product Inventory - TechStore
+=============================
+SKU       | Product Name           | Category      | Price  | Stock
+----------|------------------------|---------------|--------|-------
+PRD-1001  | Wireless Mouse         | Peripherals   | $29.99 | 142
+PRD-1002  | Mechanical Keyboard    | Peripherals   | $89.99 | 57
+PRD-1003  | 27" 4K Monitor         | Displays      | $399.00| 23
+PRD-1004  | USB-C Hub (7-port)     | Accessories   | $49.99 | 88
+PRD-1005  | Noise Cancelling Headphones | Audio    | $199.99| 34
+PRD-1006  | Webcam 1080p           | Peripherals   | $69.99 | 61
+PRD-1007  | Laptop Stand           | Accessories   | $39.99 | 115
+PRD-1008  | SSD 1TB External       | Storage       | $109.99| 49

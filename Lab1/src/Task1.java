@@ -23,6 +23,7 @@ public class Task1{
 			System.out.println("Hello " + userName + "! You are eligible for the Senior Railcard");
 		else
 			System.out.println("Hello " + userName + "! Please check our website for non-age related railcards!");
+		scanner.close();
 	}
 	
 }

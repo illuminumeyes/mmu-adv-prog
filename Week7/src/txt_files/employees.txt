@@ -1,0 +1,12 @@
+Employee Records - Acme Corp
+============================
+ID    | Name              | Department     | Salary   | Start Date
+------|-------------------|----------------|----------|------------
+E001  | Alice Johnson     | Engineering    | $92,000  | 2019-03-15
+E002  | Bob Martinez      | Marketing      | $74,500  | 2020-07-01
+E003  | Carol Nguyen      | Engineering    | $98,000  | 2018-11-20
+E004  | David Kim         | HR             | $68,000  | 2021-01-10
+E005  | Eva Patel         | Sales          | $81,000  | 2020-04-22
+E006  | Frank O'Brien     | Engineering    | $105,000 | 2017-09-05
+E007  | Grace Liu         | Finance        | $88,000  | 2019-06-30
+E008  | Henry Thompson    | Sales          | $76,000  | 2022-02-14
