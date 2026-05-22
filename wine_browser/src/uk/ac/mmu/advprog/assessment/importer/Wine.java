@@ -12,10 +12,10 @@ public class Wine {
 	public double abv;
 	public String body;
 	public String acidity;
-    public int regionId;
+    public int regionID;
     public String regionName;
     public String country;
-    public int wineryId;
+    public int wineryID;
     public String wineryName;
     public String website;
     public List<String> vintage;
@@ -31,10 +31,10 @@ public class Wine {
             double abv,
             String body,
             String acidity,
-            int regionId,
+            int regionID,
             String regionName,
             String country,
-            int wineryId,
+            int wineryID,
             String wineryName,
             String website,
             List<String> vintage) {
@@ -48,10 +48,10 @@ public class Wine {
     this.abv         = abv;
     this.body        = body;
     this.acidity     = acidity;
-    this.regionId    = regionId;
+    this.regionID    = regionID;
     this.regionName  = regionName;
     this.country     = country;
-    this.wineryId    = wineryId;
+    this.wineryID    = wineryID;
     this.wineryName  = wineryName;
     this.website     = website;
     this.vintage     = vintage;
