@@ -14,7 +14,7 @@ public class MainWindow extends JFrame {
 
     private Connection conn;
 
-    private JTextField searchField;
+    private SearchPanel searchPanel;
 
     private ResultsPanel resultsPanel;
     private WinePanel detailsPanel;
@@ -56,33 +56,8 @@ public class MainWindow extends JFrame {
         mainPanel.setBackground(new Color(20, 20, 20));
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-
-        JPanel searchPanel = new JPanel(new BorderLayout(10, 10));
-
-        searchPanel.setBackground(new Color(30, 30, 30));
-
-        searchPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(70, 70, 70), 2, true),
-                new EmptyBorder(20, 20, 20, 20)
-        ));
-
-        JLabel title = new JLabel("Wine Database");
-
-        // title.setFont(new Font("SansSerif", Font.BOLD, 28));
-        // title.setForeground(Color.WHITE);
-
-        searchField = new JTextField();
-
-        // searchField.setFont(new Font("SansSerif", Font.PLAIN, 18));
-
-        JButton searchButton = new JButton("Search");
-
-        searchButton.addActionListener(e -> performSearch());
-
-
-        searchPanel.add(title, BorderLayout.NORTH);
-        searchPanel.add(searchField, BorderLayout.CENTER);
-        searchPanel.add(searchButton, BorderLayout.EAST);
+        searchPanel = new SearchPanel();
+        searchPanel.setSearchListener((filters, sortBy) -> performSearch(filters, sortBy));
 
         JPanel contentPanel = new JPanel(new GridLayout(1, 2, 10, 0));
 
@@ -91,14 +66,12 @@ public class MainWindow extends JFrame {
         resultsPanel = new ResultsPanel(conn);
         detailsPanel = new WinePanel(conn);
 
-        // resultsPanel.setWineSelectionListener(
-        //         wineId -> detailsPanel.loadWine(wineId)
-        // );
+        resultsPanel.setWineSelectionListener(
+                wineId -> detailsPanel.loadWine(wineId)
+        );
 
         contentPanel.add(resultsPanel);
         contentPanel.add(detailsPanel);
-
-        //-----------------------------------
 
         mainPanel.add(searchPanel, BorderLayout.NORTH);
         mainPanel.add(contentPanel, BorderLayout.CENTER);
@@ -106,9 +79,7 @@ public class MainWindow extends JFrame {
         setContentPane(mainPanel);
     }
 
-    private void performSearch() {
-
-        String query = searchField.getText().trim();
-        resultsPanel.searchWines(query);
+    private void performSearch(java.util.Map<String, String> filters, String sortBy) {
+        resultsPanel.searchWinesMultiField(filters, sortBy);
     }
 }
