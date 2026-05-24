@@ -30,11 +30,10 @@ public class WineImporter implements AutoCloseable {
     }
     
 	/**
-	 * Creates all required database tables for the wine data schema.
-	 * This includes Region, Winery, Wine, Grape, Wine_Grape, Wine_Vintage, Pairing,
-	 * and Wine_Pairing tables with appropriate constraints and relationships.
+	 * Creates database tables and connects them to match
+     * the assessment brief's structure
 	 *
-	 * @param conn the database connection to use for creating tables
+	 * @param conn the database connection
 	 * @throws SQLException if a database access error occurs
 	 */
 	private void createTables(Connection conn) throws SQLException {
@@ -121,9 +120,7 @@ public class WineImporter implements AutoCloseable {
     }
 	
 	/**
-	 * Prepares all SQL statements used for data insertion and retrieval.
-	 * Initializes PreparedStatements for regions, wineries, wines, grapes, vintages,
-	 * and pairings. These statements are reused during CSV import for efficiency.
+	 * Prepares all SQL statements for insertion
 	 *
 	 * @throws SQLException if a database access error occurs during statement preparation
 	 */
@@ -163,8 +160,8 @@ public class WineImporter implements AutoCloseable {
      * Imports wine data from a CSV file into the database.
      * Reads the CSV file line by line, parses each line into a Wine object,
      * and inserts the data into the database with relationships to regions,
-     * wineries, grapes, vintages, and pairings. Changes are committed in
-     * batches of 10,000 rows for performance.
+     * wineries, grapes, vintages, and pairings. 
+     * Committed in batches of 10,000 as suggested by brief
      *
      * @param csvFilePath the file path to the CSV file to import
      * @throws IOException if an I/O error occurs while reading the file
@@ -260,13 +257,10 @@ public class WineImporter implements AutoCloseable {
     
     /**
      * Parses a single CSV line into a Wine object.
-     * Extracts all wine-related fields from the CSV record including wine details,
-     * winery information, region, grapes, vintages, and food pairings.
      *
      * @param line the CSV line to parse
-     * @return a Wine object populated with data from the CSV line
+     * @return a wine object populated with data from the CSV line
      * @throws IllegalArgumentException if the line contains insufficient columns
-     * @throws NumberFormatException if numeric fields cannot be parsed
      */
     private Wine parseLineToWine(String line) {
         List<String> fields = splitCsvLine(line);
@@ -335,9 +329,7 @@ public class WineImporter implements AutoCloseable {
 
   
     /**
-     * Parses a string representation of a list into individual items.
-     * Handles Python-style list format with brackets and quoted items.
-     * Example: "['item1', 'item2']" -> ["item1", "item2"]
+     * Parses a list into individual items
      *
      * @param raw the string representation of a list
      * @return a List of parsed items, or an empty list if raw is null/blank
@@ -379,8 +371,7 @@ public class WineImporter implements AutoCloseable {
 
     /**
      * Gets the database ID for a grape variety, creating it if it doesn't exist.
-     * Performs a case-insensitive lookup for the grape name. If not found,
-     * inserts the grape and retrieves its new ID.
+     * If not found, inserts the grape and retrieves its new ID.
      *
      * @param grapeName the name of the grape variety
      * @return the database ID of the grape

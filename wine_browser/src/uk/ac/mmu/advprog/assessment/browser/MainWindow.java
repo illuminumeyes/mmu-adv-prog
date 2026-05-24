@@ -11,7 +11,7 @@ import javax.swing.border.EmptyBorder;
 
 public class MainWindow extends JFrame {
 
-    private String dbUrl = "jdbc:sqlite:data/wines.db";
+    private final String dbUrl = "jdbc:sqlite:data/wines.db";
 
     private Connection conn;
 

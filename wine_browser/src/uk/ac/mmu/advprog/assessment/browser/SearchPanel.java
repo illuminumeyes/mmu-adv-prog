@@ -11,8 +11,8 @@ public class SearchPanel extends JPanel {
     private JTextField[] filterFields;
     private JButton searchButton;
     private SearchListener listener;
-    private String[] filterLabels = {"wineName", "type", "country", "regionName", "wineryName", "body", "acidity", "blend_type", "grape", "abvMin", "abvMax"};
-    private String[] filterDisplayNames = {"Wine Name", "Type", "Country", "Region", "Winery", "Body", "Acidity", "Blend", "Grape Variety", "ABV Min", "ABV Max"};
+    private final String[] filterLabels = {"wineName", "type", "country", "regionName", "wineryName", "body", "acidity", "blend_type", "grape", "abvMin", "abvMax"};
+    private final String[] filterDisplayNames = {"Wine Name", "Type", "Country", "Region", "Winery", "Body", "Acidity", "Blend", "Grape Variety", "ABV Min", "ABV Max"};
 
     public SearchPanel() {
         initUI();
@@ -47,9 +47,7 @@ public class SearchPanel extends JPanel {
     }
 
     /**
-     * Creates the filter panel containing input fields for all search criteria.
-     * Generates labeled text fields for wine name, type, country, region, winery,
-     * body, acidity, blend type, grape variety, and ABV range.
+     * Creates the filter panel with all search criteria.
      *
      * @return a JComponent containing the filter input fields
      */

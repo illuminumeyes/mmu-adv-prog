@@ -7,7 +7,7 @@ import javax.swing.border.EmptyBorder;
 
 public class WinePanel extends JPanel {
 
-    private Connection conn;
+    private final Connection conn;
 
     private JTextArea detailsArea;
 
@@ -77,9 +77,7 @@ public class WinePanel extends JPanel {
                 WHERE Wine.id = ?
                 """;
 
-        try (
-                PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, wineId);
 
@@ -155,8 +153,7 @@ public class WinePanel extends JPanel {
 
     /**
      * Appends the grape varieties for a wine to the details display.
-     * Queries the database for all grapes associated with the wine and formats
-     * them as a comma-separated list.
+     * Formats in list.
      *
      * @param sb the StringBuilder to append grape data to
      * @param wineId the database ID of the wine
@@ -196,8 +193,7 @@ public class WinePanel extends JPanel {
 
     /**
      * Appends the available vintages for a wine to the details display.
-     * Queries the database for all vintage years associated with the wine
-     * and displays them in reverse chronological order.
+     * Displays them in reverse chronological order.
      *
      * @param sb the StringBuilder to append vintage data to
      * @param wineId the database ID of the wine
@@ -251,9 +247,7 @@ public class WinePanel extends JPanel {
                 ORDER BY Pairing.food
                 """;
 
-        try (
-                PreparedStatement stmt = conn.prepareStatement(sql)
-        ) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, wineId);
             try (ResultSet rs = stmt.executeQuery()) {
                 boolean hasPairings = false;
