@@ -6,10 +6,8 @@ import java.util.*;
 
 
 public class WineImporter implements AutoCloseable {
-	/* JDBC connection */
     private Connection conn;
 
-    /* Pre‑compiled SQL statements */
     private PreparedStatement insertRegionStmt;
     private PreparedStatement insertWineryStmt;
     private PreparedStatement insertWineStmt;
@@ -21,13 +19,7 @@ public class WineImporter implements AutoCloseable {
     private PreparedStatement selectPairingIDStmt;
     private PreparedStatement insertWinePairingStmt;
 
-
-    /* ------------------------------------------------------------ */
-    /*  Construction / Database initialisation                      */
-    /* ------------------------------------------------------------ */
-
     public WineImporter() throws SQLException {
-   	
     	this.conn = DriverManager.getConnection("jdbc:sqlite:data/wines.db");
     	this.conn.setAutoCommit(false);
     	
@@ -37,6 +29,14 @@ public class WineImporter implements AutoCloseable {
     	
     }
     
+	/**
+	 * Creates all required database tables for the wine data schema.
+	 * This includes Region, Winery, Wine, Grape, Wine_Grape, Wine_Vintage, Pairing,
+	 * and Wine_Pairing tables with appropriate constraints and relationships.
+	 *
+	 * @param conn the database connection to use for creating tables
+	 * @throws SQLException if a database access error occurs
+	 */
 	private void createTables(Connection conn) throws SQLException {
         try (Statement st = conn.createStatement()) {
 
@@ -44,7 +44,8 @@ public class WineImporter implements AutoCloseable {
                 CREATE TABLE IF NOT EXISTS Region (
                     id      INTEGER PRIMARY KEY,
                     name    TEXT NOT NULL,
-                    country TEXT
+                    country TEXT,
+                    UNIQUE (name, country)
                 )
             """);
 
@@ -54,7 +55,8 @@ public class WineImporter implements AutoCloseable {
                     name      TEXT NOT NULL,
                     region_id INTEGER NOT NULL,
                     website   TEXT,
-                    FOREIGN KEY (region_id) REFERENCES Region(id)
+                    FOREIGN KEY (region_id) REFERENCES Region(id),
+                    UNIQUE (name, region_id)
                 )
             """);
 
@@ -68,7 +70,8 @@ public class WineImporter implements AutoCloseable {
                     acidity     TEXT,
                     body        TEXT,
                     winery_id   INTEGER NOT NULL,
-                    FOREIGN KEY (winery_id) REFERENCES Winery(id)
+                    FOREIGN KEY (winery_id) REFERENCES Winery(id),
+                    UNIQUE (name, winery_id, abv, type)
                 )
             """);
 
@@ -117,72 +120,79 @@ public class WineImporter implements AutoCloseable {
         }
     }
 	
+	/**
+	 * Prepares all SQL statements used for data insertion and retrieval.
+	 * Initializes PreparedStatements for regions, wineries, wines, grapes, vintages,
+	 * and pairings. These statements are reused during CSV import for efficiency.
+	 *
+	 * @throws SQLException if a database access error occurs during statement preparation
+	 */
 	private void prepareStatements() throws SQLException {
-        // Region
         insertRegionStmt = conn.prepareStatement(
-                "INSERT OR IGNORE INTO Region (id, name, country) VALUES (?, ?,?)");
+                "INSERT OR IGNORE INTO Region (id, name, country) VALUES (?, ?, ?)");
 
-        // Winery
+        
         insertWineryStmt = conn.prepareStatement(
         		"INSERT OR IGNORE INTO Winery (id, name, region_id, website) VALUES (?, ?, ?, ?)");
 
-        // Wine
         insertWineStmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO Wine (id, name, type, blend_type, abv, acidity, body, winery_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-
-        // Grape
+        
         insertGrapeStmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO Grape (name) VALUES (?)");
         selectGrapeIDStmt = conn.prepareStatement(
-                "SELECT id FROM Grape WHERE name = ?");
-
-        // Wine_Grape
+                "SELECT id FROM Grape WHERE LOWER(name) = LOWER(?)");
+        
         insertWineGrapeStmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO Wine_Grape (wine_id, grape_id) VALUES (?, ?)");
 
-        // Wine_Vintage
         insertVintageStmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO Wine_Vintage (wine_id, year) VALUES (?, ?)");
 
-        // Pairing
         insertPairingStmt = conn.prepareStatement(
         	    "INSERT OR IGNORE INTO Pairing (food) VALUES (?)");
         selectPairingIDStmt = conn.prepareStatement(
-                "SELECT id FROM Pairing WHERE food = ?");
+                "SELECT id FROM Pairing WHERE LOWER(food) = LOWER(?)");
 
-        // Wine_Pairing
         insertWinePairingStmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO Wine_Pairing (wine_id, pairing_id) VALUES (?, ?)");
     }
 	
     
+    /**
+     * Imports wine data from a CSV file into the database.
+     * Reads the CSV file line by line, parses each line into a Wine object,
+     * and inserts the data into the database with relationships to regions,
+     * wineries, grapes, vintages, and pairings. Changes are committed in
+     * batches of 10,000 rows for performance.
+     *
+     * @param csvFilePath the file path to the CSV file to import
+     * @throws IOException if an I/O error occurs while reading the file
+     */
     public void importFromCSV(String csvFilePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(csvFilePath))) {
             String line;
             int counter = 0;
 
+            // Skip first header line of CSV
             if ((line = br.readLine()) != null && line.contains("WineID")) {
-                // Skips header line
             }
 
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
                 Wine wine = parseLineToWine(line);
 
-                // Insert region
-                insertRegionStmt.setInt(1, wine.wineID); 
+                insertRegionStmt.setInt(1, wine.regionID); 
                 insertRegionStmt.setString(2, wine.regionName);
                 insertRegionStmt.setString(3, wine.country);
                 insertRegionStmt.executeUpdate();
 
-                // Insert winery
                 insertWineryStmt.setInt(1, wine.wineryID);
                 insertWineryStmt.setString(2, wine.wineryName);
                 insertWineryStmt.setInt(3, wine.regionID); 
                 insertWineryStmt.setString(4, wine.website);
                 insertWineryStmt.executeUpdate();
 
-                // Insert wine
                 insertWineStmt.setInt(1, wine.wineID);
                 insertWineStmt.setString(2, wine.wineName);
                 insertWineStmt.setString(3, wine.type);
@@ -193,7 +203,6 @@ public class WineImporter implements AutoCloseable {
                 insertWineStmt.setInt(8, wine.wineryID);
                 insertWineStmt.executeUpdate();
 
-                // Insert grapes and wine-grape relationships
                 for (String grapeName : wine.grapes) {
                     int grapeID = getOrCreateGrape(grapeName);
                     insertWineGrapeStmt.setInt(1, wine.wineID);
@@ -201,7 +210,6 @@ public class WineImporter implements AutoCloseable {
                     insertWineGrapeStmt.executeUpdate();
                 }
 
-                // Insert vintages and wine-vintage relationships
                 for (String vintageYear : wine.vintage) {
 
                     insertVintageStmt.setInt(1, wine.wineID);
@@ -214,48 +222,52 @@ public class WineImporter implements AutoCloseable {
 
                     if (pairingFood == null || pairingFood.isBlank()) continue;
 
-                    // 1. Insert pairing if not exists
-                    insertPairingStmt.setString(1, pairingFood);
+                    String formattedFood = pairingFood.trim();
+
+                    insertPairingStmt.setString(1, formattedFood);
                     insertPairingStmt.executeUpdate();
 
-                    // 2. Get pairing ID
-                    selectPairingIDStmt.setString(1, pairingFood);
+                    selectPairingIDStmt.setString(1, formattedFood);
                     int pairingID;
 
                     try (ResultSet rs = selectPairingIDStmt.executeQuery()) {
                         if (rs.next()) {
                             pairingID = rs.getInt("id");
                         } else {
-                            throw new SQLException("Failed to retrieve pairing id for: " + pairingFood);
+                            throw new SQLException("Failed to retrieve pairing id for: " + formattedFood);
                         }
                     }
 
-                    // 3. Insert into join table
                     insertWinePairingStmt.setInt(1, wine.wineID);
                     insertWinePairingStmt.setInt(2, pairingID);
                     insertWinePairingStmt.executeUpdate();
                 }
                 
-                
+                // Commit in batches of 10k rows
                 counter++;
                 if (counter % 10000 == 0) {
                     conn.commit();
                 }
             }
 
-            // Final commit
             conn.commit();
         } catch (SQLException e) {
-            try {
-                conn.rollback();
-            } catch (SQLException rollEx) {
-                throw new RuntimeException("Rollback failed: " + rollEx.getMessage(), rollEx);
+                throw new RuntimeException("Failed to import from CSV: " + e.getMessage(), e);
             }
-            throw new RuntimeException("Failed to import from CSV: " + e.getMessage(), e);
         }
-    }
+    
 
     
+    /**
+     * Parses a single CSV line into a Wine object.
+     * Extracts all wine-related fields from the CSV record including wine details,
+     * winery information, region, grapes, vintages, and food pairings.
+     *
+     * @param line the CSV line to parse
+     * @return a Wine object populated with data from the CSV line
+     * @throws IllegalArgumentException if the line contains insufficient columns
+     * @throws NumberFormatException if numeric fields cannot be parsed
+     */
     private Wine parseLineToWine(String line) {
         List<String> fields = splitCsvLine(line);
         if (fields.size() < 17) {
@@ -288,6 +300,14 @@ public class WineImporter implements AutoCloseable {
     }
 
     
+    /**
+     * Splits a CSV line into fields, respecting quoted values.
+     * Handles CSV format where fields can be quoted and may contain commas
+     * within the quotes without treating them as field separators.
+     *
+     * @param line the CSV line to split
+     * @return a list of field values
+     */
     private List<String> splitCsvLine(String line) {
         List<String> fields = new ArrayList<>();
         StringBuilder currentField = new StringBuilder();
@@ -314,6 +334,14 @@ public class WineImporter implements AutoCloseable {
     }
 
   
+    /**
+     * Parses a string representation of a list into individual items.
+     * Handles Python-style list format with brackets and quoted items.
+     * Example: "['item1', 'item2']" -> ["item1", "item2"]
+     *
+     * @param raw the string representation of a list
+     * @return a List of parsed items, or an empty list if raw is null/blank
+     */
     private List<String> parseList(String raw) {
         List<String> items = new ArrayList<>();
 
@@ -321,24 +349,22 @@ public class WineImporter implements AutoCloseable {
             return items;
         }
 
-        String cleaned = raw.trim();
+        String trimmed = raw.trim();
 
-        // Remove outer brackets
-        if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
-            cleaned = cleaned.substring(1, cleaned.length() - 1);
+        if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1);
         }
 
-        if (cleaned.isBlank()) {
+        if (trimmed.isBlank()) {
             return items;
         }
 
-        String[] parts = cleaned.split(",");
+        String[] parts = trimmed.split(",");
 
         for (String part : parts) {
 
             String item = part.trim();
 
-            // Remove surrounding quotes
             if ((item.startsWith("'") && item.endsWith("'")) ||
                 (item.startsWith("\"") && item.endsWith("\""))) {
 
@@ -352,42 +378,38 @@ public class WineImporter implements AutoCloseable {
     }
 
     /**
-     * Retrieves or creates a grape record and returns its primary key.
+     * Gets the database ID for a grape variety, creating it if it doesn't exist.
+     * Performs a case-insensitive lookup for the grape name. If not found,
+     * inserts the grape and retrieves its new ID.
      *
-     * @param grapeName the grape name
-     * @return the grape's primary key
-     * @throws SQLException if a database error occurs
+     * @param grapeName the name of the grape variety
+     * @return the database ID of the grape
+     * @throws SQLException if a database access error occurs
      */
     private int getOrCreateGrape(String grapeName) throws SQLException {
-        // First, try to get existing grape
-        selectGrapeIDStmt.setString(1, grapeName);
+        String formattedName = grapeName.trim();
+        
+        selectGrapeIDStmt.setString(1, formattedName);
         try (ResultSet rs = selectGrapeIDStmt.executeQuery()) {
             if (rs.next()) {
                 return rs.getInt("id");
             }
         }
         
-        // Grape doesn't exist, insert it
-        insertGrapeStmt.setString(1, grapeName);
+        insertGrapeStmt.setString(1, formattedName);
         insertGrapeStmt.executeUpdate();
         
-        // Now retrieve the newly inserted grape's ID
-        selectGrapeIDStmt.setString(1, grapeName);
+        selectGrapeIDStmt.setString(1, formattedName);
         try (ResultSet rs = selectGrapeIDStmt.executeQuery()) {
             if (rs.next()) {
                 return rs.getInt("id");
             } else {
-                throw new SQLException("Failed to retrieve grape id for: " + grapeName);
+                throw new SQLException("Failed to retrieve grape id for: " + formattedName);
             }
         }
     }
 
-
-    /**
-     * Closes all prepared statements and the underlying connection.
-     *
-     * @throws SQLException if a database error occurs
-     */
+    @Override
     public void close() throws SQLException {
         if (insertRegionStmt != null) insertRegionStmt.close();
         if (insertWineryStmt != null) insertWineryStmt.close();

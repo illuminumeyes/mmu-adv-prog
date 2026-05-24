@@ -1,9 +1,9 @@
 package uk.ac.mmu.advprog.assessment.browser;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.sql.*;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
 public class WinePanel extends JPanel {
 
@@ -49,6 +49,14 @@ public class WinePanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    /**
+     * Loads and displays detailed information for a specific wine.
+     * Retrieves wine details from the database including name, type, ABV, body,
+     * acidity, winery, region, and appends grape varieties, available vintages,
+     * and food pairing suggestions.
+     *
+     * @param wineId the database ID of the wine to load
+     */
     public void loadWine(int wineId) {
 
         String sql = """
@@ -60,6 +68,7 @@ public class WinePanel extends JPanel {
                     Wine.body,
                     Wine.acidity,
                     Winery.name AS winery_name,
+                    Winery.website,
                     Region.name AS region_name,
                     Region.country
                 FROM Wine
@@ -102,11 +111,18 @@ public class WinePanel extends JPanel {
 
                     sb.append("Acidity: ")
                             .append(rs.getString("acidity"))
-                            .append("\n\n");
+                            .append("\n");
 
                     sb.append("Winery: ")
                             .append(rs.getString("winery_name"))
                             .append("\n");
+
+                    String website = rs.getString("website");
+                    if (website != null && !website.isEmpty()) {
+                        sb.append("Website: ")
+                                .append(website)
+                                .append("\n");
+                    }
 
                     sb.append("Region: ")
                             .append(rs.getString("region_name"))
@@ -116,7 +132,13 @@ public class WinePanel extends JPanel {
                             .append(rs.getString("country"))
                             .append("\n");
 
+                    appendGrapeVarieties(sb, wineId);
+                    appendVintages(sb, wineId);
+                    appendPairings(sb, wineId);
+
                     detailsArea.setText(sb.toString());
+                } else {
+                    detailsArea.setText("No wine details found for ID: " + wineId);
                 }
             }
 
@@ -128,6 +150,128 @@ public class WinePanel extends JPanel {
                     "Error",
                     JOptionPane.ERROR_MESSAGE
             );
+        }
+    }
+
+    /**
+     * Appends the grape varieties for a wine to the details display.
+     * Queries the database for all grapes associated with the wine and formats
+     * them as a comma-separated list.
+     *
+     * @param sb the StringBuilder to append grape data to
+     * @param wineId the database ID of the wine
+     */
+    private void appendGrapeVarieties(StringBuilder sb, int wineId) {
+        String sql = """
+                SELECT DISTINCT Grape.name
+                FROM Wine_Grape
+                JOIN Grape ON Wine_Grape.grape_id = Grape.id
+                WHERE Wine_Grape.wine_id = ?
+                ORDER BY Grape.name
+                """;
+
+        try (
+                PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, wineId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                boolean hasGrapes = false;
+                while (rs.next()) {
+                    if (!hasGrapes) {
+                        sb.append("Grapes: ");
+                        hasGrapes = true;
+                    } else {
+                        sb.append(", ");
+                    }
+                    sb.append(rs.getString("name"));
+                }
+                if (hasGrapes) {
+                    sb.append("\n\n");
+                }
+            }
+        } catch (SQLException e) {
+            sb.append("Grapes: [Error loading]\n\n");
+        }
+    }
+
+    /**
+     * Appends the available vintages for a wine to the details display.
+     * Queries the database for all vintage years associated with the wine
+     * and displays them in reverse chronological order.
+     *
+     * @param sb the StringBuilder to append vintage data to
+     * @param wineId the database ID of the wine
+     */
+    private void appendVintages(StringBuilder sb, int wineId) {
+        String sql = """
+                SELECT DISTINCT Wine_Vintage.year
+                FROM Wine_Vintage
+                WHERE Wine_Vintage.wine_id = ?
+                ORDER BY Wine_Vintage.year DESC
+                """;
+
+        try (
+                PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, wineId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                boolean hasVintages = false;
+                while (rs.next()) {
+                    if (!hasVintages) {
+                        sb.append("Available Vintages: ");
+                        hasVintages = true;
+                    } else {
+                        sb.append(", ");
+                    }
+                    sb.append(rs.getString("year"));
+                }
+                if (hasVintages) {
+                    sb.append("\n\n");
+                }
+            }
+        } catch (SQLException e) {
+            sb.append("Available Vintages: [Error loading]\n\n");
+        }
+    }
+
+    /**
+     * Appends food pairing suggestions for a wine to the details display.
+     * Queries the database for all food pairing suggestions associated with
+     * the wine and formats them as a comma-separated list.
+     *
+     * @param sb the StringBuilder to append pairing data to
+     * @param wineId the database ID of the wine
+     */
+    private void appendPairings(StringBuilder sb, int wineId) {
+        String sql = """
+                SELECT DISTINCT Pairing.food
+                FROM Wine_Pairing
+                JOIN Pairing ON Wine_Pairing.pairing_id = Pairing.id
+                WHERE Wine_Pairing.wine_id = ?
+                ORDER BY Pairing.food
+                """;
+
+        try (
+                PreparedStatement stmt = conn.prepareStatement(sql)
+        ) {
+            stmt.setInt(1, wineId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                boolean hasPairings = false;
+                while (rs.next()) {
+                    if (!hasPairings) {
+                        sb.append("Food Pairings: ");
+                        hasPairings = true;
+                    } else {
+                        sb.append(", ");
+                    }
+                    sb.append(rs.getString("food"));
+                }
+                if (hasPairings) {
+                    sb.append("\n\n");
+                }
+            }
+        } catch (SQLException e) {
+            sb.append("Food Pairings: [Error loading]\n\n");
         }
     }
 }

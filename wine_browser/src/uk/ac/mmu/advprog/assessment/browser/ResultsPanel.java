@@ -2,6 +2,8 @@ package uk.ac.mmu.advprog.assessment.browser;
 
 import java.awt.*;
 import java.sql.*;
+import java.util.*;
+import java.util.List;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
@@ -32,8 +34,7 @@ public class ResultsPanel extends JPanel {
         title.setFont(new Font("SansSerif", Font.BOLD, 20));
         title.setForeground(Color.WHITE);
 
-        // Create table model with column names
-        String[] columnNames = {"Name", "Type", "Winery", "Country", "ABV"};
+        String[] columnNames = {"ID", "Name", "Type", "Winery", "Country", "ABV"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -50,19 +51,37 @@ public class ResultsPanel extends JPanel {
         resultsTable.getTableHeader().setForeground(Color.WHITE);
         resultsTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
 
-        // Add sorting support
+        resultsTable.removeColumn(resultsTable.getColumnModel().getColumn(0));
+
         sorter = new TableRowSorter<>(tableModel);
+        
+        sorter.setComparator(5, (o1, o2) -> {
+            try {
+                String s1 = o1.toString().replaceAll("[^0-9.]", "");
+                String s2 = o2.toString().replaceAll("[^0-9.]", "");
+                double v1 = s1.isEmpty() ? 0 : Double.parseDouble(s1);
+                double v2 = s2.isEmpty() ? 0 : Double.parseDouble(s2);
+                return Double.compare(v1, v2);
+            } catch (NumberFormatException e) {
+                return o1.toString().compareTo(o2.toString());
+            }
+        });
+        
         resultsTable.setRowSorter(sorter);
 
-        // Add selection listener
         resultsTable.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 int selectedRow = resultsTable.getSelectedRow();
                 if (selectedRow >= 0) {
                     int modelRow = resultsTable.convertRowIndexToModel(selectedRow);
-                    Object wineIdObj = tableModel.getValueAt(modelRow, 5); // Hidden ID column
+                    Object wineIdObj = tableModel.getValueAt(modelRow, 0); // Hidden ID column
                     if (wineIdObj != null && listener != null) {
-                        listener.onWineSelected((Integer) wineIdObj);
+                        try {
+                            int wineId = Integer.parseInt(wineIdObj.toString());
+                            listener.onWineSelected(wineId);
+                        } catch (NumberFormatException ex) {
+                            System.err.println("Error parsing wine ID: " + wineIdObj);
+                        }
                     }
                 }
             }
@@ -75,145 +94,169 @@ public class ResultsPanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    public void searchWines(String query, String label, String sortBy) {
+
+    /**
+     * Searches for wines
+     * Builds and executes a dynamic SQL query with filters
+     * Results are displayed in the results table and sorted by wine name.
+     *
+     * @param filters a Map containing filter field names and values
+     */
+    public void searchWinesMultiField(Map<String, String> filters) {
+
         clearTable();
 
-        String[] allowedFields = {"wineName", "type", "body", "acidity", "country", "regionName", "wineryName", "elaborate"};
-        if (!isValidField(label, allowedFields)) {
-            showError(new IllegalArgumentException("Invalid search field: " + label));
-            return;
-        }
+        StringBuilder sql = new StringBuilder("""
+            SELECT DISTINCT
+                Wine.id,
+                Wine.name,
+                Wine.type,
+                Winery.name AS winery_name,
+                Region.country,
+                Wine.abv
+            FROM Wine
+            LEFT JOIN Winery
+                ON Wine.winery_id = Winery.id
+            LEFT JOIN Region
+                ON Winery.region_id = Region.id
+            LEFT JOIN Wine_Grape
+                ON Wine.id = Wine_Grape.wine_id
+            LEFT JOIN Grape
+                ON Wine_Grape.grape_id = Grape.id
+            WHERE 1=1
+        """);
 
-        String orderBy = getOrderBy(sortBy);
+        List<Object> params = new ArrayList<>();
 
-        String sql = "SELECT Wine.id, Wine.name, Wine.type, Winery.name AS winery_name, Region.country, Wine.abv "
-                + "FROM Wine "
-                + "JOIN Winery ON Wine.winery_id = Winery.id "
-                + "JOIN Region ON Winery.region_id = Region.id "
-                + "WHERE LOWER(" + label + ") LIKE ? "
-                + "ORDER BY " + orderBy;
+        for (Map.Entry<String, String> entry : filters.entrySet()) {
 
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, "%" + query.toLowerCase() + "%");
+            String field = entry.getKey();
+            String value = entry.getValue();
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    addRow(rs.getInt("id"), rs.getString("name"), rs.getString("type"),
-                           rs.getString("winery_name"), rs.getString("country"), rs.getDouble("abv"));
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+
+            value = value.trim();
+
+            switch (field) {
+
+                case "abvMin" -> {
+
+                    try {
+                        double minAbv = Double.parseDouble(value);
+
+                        sql.append(" AND Wine.abv >= ? ");
+                        params.add(minAbv);
+
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+
+                case "abvMax" -> {
+
+                    try {
+                        double maxAbv = Double.parseDouble(value);
+
+                        sql.append(" AND Wine.abv <= ? ");
+                        params.add(maxAbv);
+
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+
+                case "grape" -> {
+
+                    sql.append("""
+                        AND EXISTS (
+                            SELECT 1
+                            FROM Wine_Grape
+                            JOIN Grape
+                                ON Wine_Grape.grape_id = Grape.id
+                            WHERE Wine_Grape.wine_id = Wine.id
+                            AND LOWER(Grape.name) LIKE ?
+                        )
+                    """);
+
+                    params.add("%" + value.toLowerCase() + "%");
+                }
+
+                case "elaborate" -> {
+
+                    sql.append(" AND LOWER(Wine.elaborate) LIKE ? ");
+                    params.add("%" + value.toLowerCase() + "%");
+                }
+
+                default -> {
+
+                    String columnName = getColumnName(field);
+
+                    if (columnName == null || columnName.isBlank()) {
+                        continue;
+                    }
+
+                    sql.append(" AND LOWER(")
+                       .append(columnName)
+                       .append(") LIKE ? ");
+
+                    params.add("%" + value.toLowerCase() + "%");
                 }
             }
-        } catch (SQLException e) {
-            showError(e);
-        }
-    }
-
-    public void searchWinesMultiField(java.util.Map<String, String> filters, String sortBy) {
-        clearTable();
-
-        StringBuilder sql = new StringBuilder(
-                "SELECT Wine.id, Wine.name, Wine.type, Winery.name AS winery_name, Region.country, Wine.abv "
-                + "FROM Wine "
-                + "JOIN Winery ON Wine.winery_id = Winery.id "
-                + "JOIN Region ON Winery.region_id = Region.id "
-                + "WHERE 1=1 ");
-
-        java.util.List<String> params = new java.util.ArrayList<>();
-
-        for (String field : filters.keySet()) {
-            String value = filters.get(field);
-            if (value == null || value.trim().isEmpty()) continue;
-
-            if (field.equals("abvMin")) {
-                try {
-                    double minAbv = Double.parseDouble(value);
-                    sql.append(" AND Wine.abv >= ? ");
-                    params.add(String.valueOf(minAbv));
-                } catch (NumberFormatException e) {
-                    // Skip invalid ABV
-                }
-            } else if (field.equals("abvMax")) {
-                try {
-                    double maxAbv = Double.parseDouble(value);
-                    sql.append(" AND Wine.abv <= ? ");
-                    params.add(String.valueOf(maxAbv));
-                } catch (NumberFormatException e) {
-                    // Skip invalid ABV
-                }
-            } else if (field.equals("grape")) {
-                sql.append(" AND Wine.id IN (SELECT wine_id FROM Wine_Grape JOIN Grape ON Wine_Grape.grape_id = Grape.id WHERE LOWER(Grape.name) LIKE ?) ");
-                params.add("%" + value.toLowerCase() + "%");
-            } else {
-                String columnName = getColumnName(field);
-                sql.append(" AND LOWER(").append(columnName).append(") LIKE ? ");
-                params.add("%" + value.toLowerCase() + "%");
-            }
         }
 
-        String orderBy = getOrderBy(sortBy);
-        sql.append(" ORDER BY ").append(orderBy);
+        sql.append(" ORDER BY Wine.name ASC");
 
         try (PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
-            int paramIndex = 1;
-            for (String param : params) {
-                if (param.matches("-?\\d+(\\.\\d+)?")) {
-                    stmt.setDouble(paramIndex++, Double.parseDouble(param));
-                } else {
-                    stmt.setString(paramIndex++, param);
+
+            for (int i = 0; i < params.size(); i++) {
+
+                Object param = params.get(i);
+
+                if (param instanceof Double d) {
+                    stmt.setDouble(i + 1, d);
+
+                } else if (param != null) {
+                    stmt.setString(i + 1, param.toString());
                 }
             }
 
             try (ResultSet rs = stmt.executeQuery()) {
+
+                int rowCount = 0;
                 while (rs.next()) {
-                    addRow(rs.getInt("id"), rs.getString("name"), rs.getString("type"),
-                           rs.getString("winery_name"), rs.getString("country"), rs.getDouble("abv"));
+                    rowCount++;
+                    addRow(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("type"),
+                        rs.getString("winery_name"),
+                        rs.getString("country"),
+                        rs.getDouble("abv")
+                    );
                 }
             }
+
         } catch (SQLException e) {
+
             showError(e);
         }
-    }
-
-    private boolean isValidField(String field, String[] allowedFields) {
-        for (String allowed : allowedFields) {
-            if (allowed.equals(field)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private String getColumnName(String field) {
-        switch (field) {
-            case "wineName":
-                return "Wine.name";
-            case "type":
-                return "Wine.type";
-            case "country":
-                return "Region.country";
-            case "regionName":
-                return "Region.name";
-            case "wineryName":
-                return "Winery.name";
-            case "body":
-                return "Wine.body";
-            case "acidity":
-                return "Wine.acidity";
-            default:
-                return field; // fallback
-        }
-    }
-
-    private String getOrderBy(String sortBy) {
-        if ("ABV (High to Low)".equals(sortBy)) {
-            return "Wine.abv DESC";
-        } else if ("ABV (Low to High)".equals(sortBy)) {
-            return "Wine.abv ASC";
-        }
-        return "Wine.name";
+        return switch (field) {
+            case "wineName" -> "Wine.name";
+            case "type" -> "Wine.type";
+            case "country" -> "Region.country";
+            case "regionName" -> "Region.name";
+            case "wineryName" -> "Winery.name";
+            case "body" -> "Wine.body";
+            case "acidity" -> "Wine.acidity";
+            default -> field;
+        };
     }
 
     private void addRow(int id, String name, String type, String winery, String country, double abv) {
-        tableModel.addRow(new Object[]{name, type, winery, country, String.format("%.1f%%", abv), id});
+        tableModel.addRow(new Object[]{id, name, type, winery, country, String.format("%.1f%%", abv)});
     }
 
     private void clearTable() {

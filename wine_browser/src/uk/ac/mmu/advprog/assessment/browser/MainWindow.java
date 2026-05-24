@@ -5,6 +5,7 @@ import java.awt.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Map;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
@@ -22,7 +23,7 @@ public class MainWindow extends JFrame {
     public MainWindow() {
 
         setTitle("Wine Browser");
-        setSize(1200, 750);
+        setSize(1400, 850);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -30,7 +31,9 @@ public class MainWindow extends JFrame {
 
         initUI();
     }
-
+    /**
+     * Establishes connection to Database
+     */
     private void connectDatabase() {
 
         try {
@@ -49,6 +52,11 @@ public class MainWindow extends JFrame {
         }
     }
 
+    /**
+     * Initialises the main window UI components.
+     * Creates and configures the search, wine, and results panels.
+     * Connects components together for triggered events
+     */
     private void initUI() {
 
         JPanel mainPanel = new JPanel(new BorderLayout(20, 20));
@@ -57,7 +65,7 @@ public class MainWindow extends JFrame {
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         searchPanel = new SearchPanel();
-        searchPanel.setSearchListener((filters, sortBy) -> performSearch(filters, sortBy));
+        searchPanel.setSearchListener((filters) -> performSearch(filters));
 
         JPanel contentPanel = new JPanel(new GridLayout(1, 2, 10, 0));
 
@@ -66,9 +74,7 @@ public class MainWindow extends JFrame {
         resultsPanel = new ResultsPanel(conn);
         detailsPanel = new WinePanel(conn);
 
-        resultsPanel.setWineSelectionListener(
-                wineId -> detailsPanel.loadWine(wineId)
-        );
+        resultsPanel.setWineSelectionListener(wineID -> detailsPanel.loadWine(wineID));
 
         contentPanel.add(resultsPanel);
         contentPanel.add(detailsPanel);
@@ -79,7 +85,7 @@ public class MainWindow extends JFrame {
         setContentPane(mainPanel);
     }
 
-    private void performSearch(java.util.Map<String, String> filters, String sortBy) {
-        resultsPanel.searchWinesMultiField(filters, sortBy);
+    private void performSearch(Map<String, String> filters) {
+        resultsPanel.searchWinesMultiField(filters);
     }
 }

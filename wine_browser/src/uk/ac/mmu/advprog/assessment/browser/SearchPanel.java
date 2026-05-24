@@ -9,16 +9,20 @@ import javax.swing.border.EmptyBorder;
 public class SearchPanel extends JPanel {
 
     private JTextField[] filterFields;
-    private JComboBox<String> sortSelector;
     private JButton searchButton;
     private SearchListener listener;
-    private String[] filterLabels = {"wineName", "type", "country", "regionName", "wineryName", "body", "acidity", "grape", "abvMin", "abvMax"};
-    private String[] filterDisplayNames = {"Wine Name", "Type", "Country", "Region", "Winery", "Body", "Acidity", "Grape Variety", "ABV Min", "ABV Max"};
+    private String[] filterLabels = {"wineName", "type", "country", "regionName", "wineryName", "body", "acidity", "blend_type", "grape", "abvMin", "abvMax"};
+    private String[] filterDisplayNames = {"Wine Name", "Type", "Country", "Region", "Winery", "Body", "Acidity", "Blend", "Grape Variety", "ABV Min", "ABV Max"};
 
     public SearchPanel() {
         initUI();
     }
 
+    /**
+     * Initializes the search panel UI components.
+     * Creates a title, filter input fields for various wine attributes,
+     * and a search button to trigger searches.
+     */
     private void initUI() {
         setLayout(new BorderLayout(10, 10));
         setBackground(new Color(30, 30, 30));
@@ -31,31 +35,27 @@ public class SearchPanel extends JPanel {
         title.setFont(new Font("SansSerif", Font.BOLD, 24));
         title.setForeground(Color.WHITE);
 
-        // Filter panel
         JComponent filterPanel = createFilterPanel();
 
-        // Sort panel
-        JPanel sortPanel = createSortPanel();
-
-        // Search button
         searchButton = new JButton("Search");
         searchButton.setFont(new Font("SansSerif", Font.PLAIN, 14));
         searchButton.addActionListener(e -> performSearch());
 
-        // Bottom panel combining sort and search button
-        JPanel bottomPanel = new JPanel(new BorderLayout(10, 10));
-        bottomPanel.setBackground(new Color(30, 30, 30));
-        bottomPanel.add(sortPanel, BorderLayout.CENTER);
-        bottomPanel.add(searchButton, BorderLayout.EAST);
-
         add(title, BorderLayout.NORTH);
         add(filterPanel, BorderLayout.CENTER);
-        add(bottomPanel, BorderLayout.SOUTH);
+        add(searchButton, BorderLayout.SOUTH);
     }
 
+    /**
+     * Creates the filter panel containing input fields for all search criteria.
+     * Generates labeled text fields for wine name, type, country, region, winery,
+     * body, acidity, blend type, grape variety, and ABV range.
+     *
+     * @return a JComponent containing the filter input fields
+     */
     private JComponent createFilterPanel() {
         JPanel filterPanel = new JPanel();
-        filterPanel.setLayout(new GridLayout(5, 2, 10, 10));
+        filterPanel.setLayout(new GridLayout(6, 2, 10, 10));
         filterPanel.setBackground(new Color(30, 30, 30));
 
         filterFields = new JTextField[filterLabels.length];
@@ -83,26 +83,6 @@ public class SearchPanel extends JPanel {
         return scrollPane;
     }
 
-    private JPanel createSortPanel() {
-        JPanel sortPanel = new JPanel(new BorderLayout(10, 10));
-        sortPanel.setBackground(new Color(30, 30, 30));
-
-        JLabel sortLabel = new JLabel("Sort By:");
-        sortLabel.setForeground(Color.WHITE);
-        sortLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-
-        String[] sortOptions = {"Wine Name", "ABV (High to Low)", "ABV (Low to High)"};
-        sortSelector = new JComboBox<>(sortOptions);
-        sortSelector.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        sortSelector.setBackground(new Color(45, 45, 45));
-        sortSelector.setForeground(Color.WHITE);
-
-        sortPanel.add(sortLabel, BorderLayout.WEST);
-        sortPanel.add(sortSelector, BorderLayout.CENTER);
-
-        return sortPanel;
-    }
-
     private void performSearch() {
         if (listener != null) {
             // Build filters map
@@ -119,8 +99,7 @@ public class SearchPanel extends JPanel {
                 return;
             }
 
-            String sortBy = (String) sortSelector.getSelectedItem();
-            listener.onSearch(filters, sortBy);
+            listener.onSearch(filters);
         }
     }
 
@@ -136,6 +115,6 @@ public class SearchPanel extends JPanel {
 
     @FunctionalInterface
     public interface SearchListener {
-        void onSearch(Map<String, String> filters, String sortBy);
+        void onSearch(Map<String, String> filters);
     }
 }
